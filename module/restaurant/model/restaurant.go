@@ -7,19 +7,26 @@ import (
 )
 
 const TableName string = "restaurants"
+const EntityName string = "Restaurants"
 
 type Restaurant struct {
 	common.SQLModel `json:",inline"`
 	Name            string `json:"name" gorm:"column:name"`
 	Addr            string `json:"addr" gorm:"column:addr"`
+	Logo            string `json:"logo" gorm:"logo"`
 }
 
 func (Restaurant) TableName() string { return TableName }
+
+func (r *Restaurant) Mask(isAdminOrOwner bool) {
+	r.GenUID(common.DbTypeRestaurant)
+}
 
 type RestaurantCreate struct {
 	common.SQLModel `json:",inline"`
 	Name            string `json:"name" gorm:"column:name"`
 	Addr            string `json:"addr" gorm:"column:addr"`
+	Logo            string `json:"logo" gorm:"logo"`
 }
 
 func (data *RestaurantCreate) Validate() error {
@@ -32,11 +39,16 @@ func (data *RestaurantCreate) Validate() error {
 	return nil
 }
 
+func (data *RestaurantCreate) Mask(isAdminOrOwner bool) {
+	data.GenUID(common.DbTypeRestaurant)
+}
+
 func (RestaurantCreate) TableName() string { return TableName }
 
 type RestaurantUpdate struct {
 	Name *string `json:"name" gorm:"column:name"`
 	Addr *string `json:"addr" gorm:"column:addr"`
+	Logo string  `json:"logo" gorm:"logo"`
 }
 
 func (RestaurantUpdate) TableName() string { return TableName }
