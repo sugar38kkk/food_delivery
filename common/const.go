@@ -5,6 +5,7 @@ import "log"
 const (
 	DbTypeRestaurant = 1
 	DbTypeUser       = 2
+	DbTypeUpload     = 3
 )
 
 func AppRecover() {
