@@ -6,21 +6,20 @@ import (
 	restaurantmodel "food-delivery/module/restaurant/model"
 )
 
-type ListRestaurantStore interface {
-	ListDataWithCondition(
+type ListRestaurantRepo interface {
+	ListRestaurant(
 		context context.Context,
 		filter *restaurantmodel.Filter,
 		paging *common.Paging,
-		moreKeys ...string,
 	) ([]restaurantmodel.Restaurant, error)
 }
 
 type listRestaurantBusiness struct {
-	store ListRestaurantStore
+	repo ListRestaurantRepo
 }
 
-func NewListRestaurantBusiness(store ListRestaurantStore) *listRestaurantBusiness {
-	return &listRestaurantBusiness{store: store}
+func NewListRestaurantBusiness(repo ListRestaurantRepo) *listRestaurantBusiness {
+	return &listRestaurantBusiness{repo}
 }
 
 func (biz *listRestaurantBusiness) ListRestaurant(
@@ -29,9 +28,9 @@ func (biz *listRestaurantBusiness) ListRestaurant(
 	paging *common.Paging,
 ) ([]restaurantmodel.Restaurant, error) {
 
-	result, err := biz.store.ListDataWithCondition(context, filter, paging)
+	result, err := biz.repo.ListRestaurant(context, filter, paging)
 	if err != nil {
-		return nil, err
+		return nil, common.ErrCannotGetEntity(restaurantmodel.EntityName, err)
 	}
 
 	return result, nil
