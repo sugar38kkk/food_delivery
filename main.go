@@ -4,16 +4,14 @@ import (
 	"food-delivery/component/appctx"
 	"food-delivery/component/uploadprovider"
 	"food-delivery/middleware"
-	"food-delivery/module/restaurant/transport/ginrestaurant"
-	"food-delivery/module/upload/transport/ginupload"
-	"food-delivery/module/user/transport/ginuser"
+	"food-delivery/pubsub/localpb"
+	"food-delivery/route"
+	"food-delivery/subscriber"
 	"github.com/gin-gonic/gin"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 	"log"
-	"net/http"
 	"os"
-	"strconv"
 )
 
 const TableName string = "restaurants"
@@ -52,8 +50,13 @@ func main() {
 	db = db.Debug()
 
 	s3Provider := uploadprovider.NewS3Provider(s3BucketName, s3Region, s3APIKey, s3SecretKey, s3Domain)
+	ps := localpb.NewPubSub()
 
-	appContext := appctx.NewAppContext(db, s3Provider, secretKey)
+	appContext := appctx.NewAppContext(db, s3Provider, secretKey, ps)
+
+	//setup subscriber
+	//subscriber.Setup(appContext, context.Background())
+	_ = subscriber.NewEngine(appContext).Start()
 
 	r := gin.Default()
 	r.Use(middleware.Recover(appContext))
@@ -61,102 +64,9 @@ func main() {
 
 	// POST /restaurants
 	v1 := r.Group("/v1")
-
-	v1.POST("/upload", ginupload.UploadImage(appContext))
-
-	restaurants := v1.Group("/restaurants")
-	auth := v1.Group("/auth")
-
-	//Auth
-	auth.POST("/register", ginuser.Register(appContext))
-	auth.POST("/login", ginuser.Login(appContext))
-	auth.GET("/profile", middleware.RequiredAuth(appContext), ginuser.Profile(appContext))
-
-	//Restaurant
-
-	restaurants.POST("/", ginrestaurant.CreateRestaurant(appContext))
-
-	restaurants.GET("/", ginrestaurant.ListRestaurant(appContext))
-
-	restaurants.GET("/:id", func(c *gin.Context) {
-
-		id, err := strconv.Atoi(c.Param("id"))
-
-		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"error": err.Error(),
-			})
-
-			return
-		}
-
-		var myRestaurant Restaurant
-
-		db.Where("id = ?", id).First(&myRestaurant)
-
-		c.JSON(http.StatusOK, gin.H{
-			"data": myRestaurant,
-		})
-	})
-
-	restaurants.PATCH("/:id", func(c *gin.Context) {
-
-		id, err := strconv.Atoi(c.Param("id"))
-
-		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"error": err.Error(),
-			})
-
-			return
-		}
-
-		var data RestaurantUpdate
-
-		if err := c.ShouldBind(&data); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"error": err.Error(),
-			})
-
-			return
-		}
-
-		db.Where("id = ?", id).Updates(&data)
-
-		c.JSON(http.StatusOK, gin.H{
-			"data": data,
-		})
-	})
-
-	restaurants.DELETE("/:id", ginrestaurant.DeleteRestaurant(appContext))
+	route.SetupRoute(appContext, v1)
+	route.SetupAdminRoute(appContext, v1)
 
 	r.Run()
-
-	//newRestaurant := Restaurant{Name: "Big Mouth", Addr: "K09/54 Ha Van Tri"}
-	//
-	//if err := db.Create(&newRestaurant).Error; err != nil {
-	//	log.Println(err)
-	//}
-
-	//var myRestaurant Restaurant
-	//
-	//if err := db.Where("id = ?", 3).First(&myRestaurant).Error; err != nil {
-	//	log.Println(err)
-	//}
-	//
-	//log.Println(myRestaurant)
-	//
-	//newName := "Sugar Tech"
-	//updateData := RestaurantUpdate{Name: &newName}
-	//
-	//if err := db.Where("id = ?", 3).Updates(&updateData).Error; err != nil {
-	//	log.Println(err)
-	//}
-	//
-	//log.Println(myRestaurant)
-	//
-	//if err := db.Table(Restaurant{}.TableName()).Where("id = ?", 2).Delete(nil).Error; err != nil {
-	//	log.Println(err)
-	//}
 
 }

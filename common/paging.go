@@ -22,3 +22,7 @@ func (p *Paging) Fulfill() {
 
 	p.FakeCursor = strings.TrimSpace(p.FakeCursor)
 }
+
+func (paging *Paging) Offset() int {
+	return (paging.Page - 1) * paging.Limit
+}
